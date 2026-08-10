@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Go (cgo) bindings for the [libusb C library](http://libusb.info) (libusb-1.0). Module path: `github.com/gotmc/libusb/v2`. Requires the libusb C library installed on the system (`brew install libusb` on macOS, `apt-get install libusb-dev libusb-1.0-0-dev` on Linux).
+Go (cgo) bindings for the [libusb C library](http://libusb.info) (libusb-1.0). Module path: `github.com/Tryanks/libusb`. Requires the libusb C library installed on the system (`brew install libusb` on macOS, `apt-get install libusb-dev libusb-1.0-0-dev` on Linux).
 
 ## Build & Test Commands
 

@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -17,6 +17,7 @@ import (
 
 // DeviceHandle represents the libusb device handle.
 type DeviceHandle struct {
+	ctx                *Context
 	libusbDeviceHandle *C.libusb_device_handle
 }
 
@@ -30,8 +31,9 @@ func deviceHandleFinalizer(dh *DeviceHandle) {
 }
 
 // newDeviceHandle creates a new DeviceHandle with proper finalizer setup.
-func newDeviceHandle(libusbDeviceHandle *C.libusb_device_handle) *DeviceHandle {
+func newDeviceHandle(ctx *Context, libusbDeviceHandle *C.libusb_device_handle) *DeviceHandle {
 	dh := &DeviceHandle{
+		ctx:                ctx,
 		libusbDeviceHandle: libusbDeviceHandle,
 	}
 	runtime.SetFinalizer(dh, deviceHandleFinalizer)
@@ -129,9 +131,17 @@ func (dh *DeviceHandle) Close() error {
 
 // Device implements libusb_get_device to get the underlying device for a
 // handle.
-// TODO(mdr): Determine if I actually need this function.
-// func (dh *DeviceHandle) Device() (*Device, error) {
-// }
+func (dh *DeviceHandle) Device() (*Device, error) {
+	if dh == nil || dh.libusbDeviceHandle == nil {
+		return nil, ErrorCode(errorInvalidParam)
+	}
+	device := C.libusb_get_device(dh.libusbDeviceHandle)
+	if device == nil {
+		return nil, ErrorCode(errorNoDevice)
+	}
+	C.libusb_ref_device(device)
+	return newDevice(dh.ctx, device), nil
+}
 
 // Configuration implements the libusb_get_configuration function to
 // determine the bConfigurationValue of the currently active configuration.
@@ -209,11 +219,16 @@ func (dh *DeviceHandle) SetInterfaceAltSetting(
 	return nil
 }
 
-// FIXME(mdr): libusb_clear_halt takes an endpoint as an unsigned char. Need to
-// determine, what I should pass into this function as the endpoint.
-// func (dh *DeviceHandle) ClearHalt(endpoint int) error {
-// return nil
-// }
+// ClearHalt clears a halt/stall condition for the given endpoint.
+func (dh *DeviceHandle) ClearHalt(endpoint EndpointAddress) error {
+	if dh == nil || dh.libusbDeviceHandle == nil {
+		return ErrorCode(errorInvalidParam)
+	}
+	if err := C.libusb_clear_halt(dh.libusbDeviceHandle, C.uchar(endpoint)); err != 0 {
+		return ErrorCode(err)
+	}
+	return nil
+}
 
 // ResetDevice implements libusb_reset_device to perform a USB port reset to
 // reinitialize a device.

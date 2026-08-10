@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gotmc/libusb/v2"
+	"github.com/Tryanks/libusb"
 )
 
 func main() {
@@ -73,4 +73,3 @@ func main() {
 		}
 	}
 }
-

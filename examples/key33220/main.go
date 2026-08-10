@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	libusb "github.com/gotmc/libusb/v2"
+	libusb "github.com/Tryanks/libusb"
 )
 
 const reservedField = 0x00
@@ -41,11 +41,11 @@ func main() {
 	var vendorID uint
 	var productID uint
 	var listOnly bool
-	
+
 	flag.UintVar(&vendorID, "vid", 2391, "USB Vendor ID (decimal or hex with 0x prefix)")
 	flag.UintVar(&productID, "pid", 1031, "USB Product ID (decimal or hex with 0x prefix)")
 	flag.BoolVar(&listOnly, "list", false, "List all USB devices and exit")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
@@ -55,9 +55,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  %s -vid 0x0957 -pid 0x0407\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -list\n", os.Args[0])
 	}
-	
+
 	flag.Parse()
-	
+
 	// Validate vendor and product IDs
 	if vendorID > 0xFFFF {
 		log.Fatalf("Invalid vendor ID: %d (must be 0-65535)", vendorID)
@@ -65,14 +65,14 @@ func main() {
 	if productID > 0xFFFF {
 		log.Fatalf("Invalid product ID: %d (must be 0-65535)", productID)
 	}
-	
+
 	showVersion()
 	ctx, err := libusb.NewContext()
 	if err != nil {
 		log.Fatal("Couldn't create USB context. Ending now.")
 	}
 	defer ctx.Close()
-	
+
 	if listOnly {
 		start := time.Now()
 		devices, _ := ctx.DeviceList()
@@ -105,7 +105,7 @@ func main() {
 		}
 		return
 	}
-	
+
 	// Connect to the specified device
 	showInfo(ctx, uint16(vendorID), uint16(productID))
 }
@@ -147,7 +147,7 @@ func showInfo(ctx *libusb.Context, vendorID, productID uint16) {
 	if err != nil {
 		product = "<unavailable>"
 	}
-	
+
 	// Use serial number as the device identifier from now on
 	fmt.Printf("=> Connected to device S/N: %s\n", serialnum)
 	fmt.Printf("=> Manufacturer: %s, Product: %s\n", manufacturer, product)

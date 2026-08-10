@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -62,6 +62,12 @@ func TestDeviceNilChecks(t *testing.T) {
 			"ConfigDescriptorByValue: got %v, want errorInvalidParam", err,
 		)
 	}
+	if _, err := dev.Identity(); err != ErrorCode(errorInvalidParam) {
+		t.Errorf("Identity: got %v, want errorInvalidParam", err)
+	}
+	if _, err := dev.SerialNumber(); err != ErrorCode(errorInvalidParam) {
+		t.Errorf("SerialNumber: got %v, want errorInvalidParam", err)
+	}
 	if _, err := dev.FindInterfacesByClass(0x07); err != ErrorCode(errorInvalidParam) {
 		t.Errorf(
 			"FindInterfacesByClass: got %v, want errorInvalidParam", err,
@@ -77,6 +83,9 @@ func TestDeviceNilInternalPointer(t *testing.T) {
 	}
 	if _, err := dev.Open(); err != ErrorCode(errorInvalidParam) {
 		t.Errorf("Open: got %v, want errorInvalidParam", err)
+	}
+	if _, err := dev.Identity(); err != ErrorCode(errorInvalidParam) {
+		t.Errorf("Identity: got %v, want errorInvalidParam", err)
 	}
 	if _, err := dev.DeviceDescriptor(); err != ErrorCode(errorInvalidParam) {
 		t.Errorf("DeviceDescriptor: got %v, want errorInvalidParam", err)

@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -61,6 +61,27 @@ func CPUtoLE16(value int) int {
 // the backend has updated its capability set." (Source: libusb docs)
 func HasCapability(capability int) bool {
 	return C.libusb_has_capability(C.uint32_t(capability)) != 0
+}
+
+func transferCompletionError(status TransferStatus) error {
+	switch status {
+	case TransferCompleted:
+		return nil
+	case TransferError:
+		return errorTransferError
+	case TransferTimedOut:
+		return errorTransferTimedOut
+	case TransferCanceled:
+		return errorTransferCanceled
+	case TransferStall:
+		return errorTransferStall
+	case TransferNoDevice:
+		return errorTransferNoDevice
+	case TransferOverflow:
+		return errorTransferOverflow
+	default:
+		return errorOther
+	}
 }
 
 const (

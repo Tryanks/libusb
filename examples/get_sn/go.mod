@@ -1,7 +1,7 @@
-module github.com/gotmc/libusb/examples/get_sn
+module github.com/Tryanks/libusb/examples/get_sn
 
 go 1.21
 
-require github.com/gotmc/libusb/v2 v2.3.0
+require github.com/Tryanks/libusb v0.0.0
 
-replace github.com/gotmc/libusb/v2 => ../../
+replace github.com/Tryanks/libusb => ../../

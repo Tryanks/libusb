@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -123,7 +123,7 @@ const (
 	// 128 instead of 1. Therefore, I'm not using C.LIBUSB_ENDPOINT_IN (128).
 	endpointOut   EndpointDirection = C.LIBUSB_ENDPOINT_OUT
 	endpointIn    EndpointDirection = 1
-	directionMask endpointAddress   = 0x80
+	directionMask EndpointAddress   = 0x80
 	directionBit                    = 7
 )
 

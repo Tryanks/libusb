@@ -1,7 +1,7 @@
-module github.com/gotmc/libusb/examples/keyu2751a
+module github.com/Tryanks/libusb/examples/keyu2751a
 
 go 1.21
 
-require github.com/gotmc/libusb/v2 v2.0.0
+require github.com/Tryanks/libusb v0.0.0
 
-replace github.com/gotmc/libusb/v2 => ../../
+replace github.com/Tryanks/libusb => ../../

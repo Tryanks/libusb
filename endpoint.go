@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -15,14 +15,15 @@ type Endpoint struct {
 	// FIXME(mdr): Is this needed/used? Can this safely be deleted?
 }
 
-type endpointAddress byte
+// EndpointAddress identifies a USB endpoint, including its direction bit.
+type EndpointAddress byte
 type endpointAttributes byte
 
 // EndpointDescriptor models the descriptor for a given endpoint.
 type EndpointDescriptor struct {
 	Length          int
 	DescriptorType  descriptorType
-	EndpointAddress endpointAddress
+	EndpointAddress EndpointAddress
 	Attributes      endpointAttributes
 	MaxPacketSize   uint16
 	Interval        uint8
@@ -53,18 +54,33 @@ func (end *EndpointDescriptor) TransferType() TransferType {
 	return end.Attributes.transferType()
 }
 
-func (address endpointAddress) direction() EndpointDirection {
+// Byte returns the raw endpoint address byte.
+func (address EndpointAddress) Byte() byte { return byte(address) }
+
+// IsIn reports whether this is a device-to-host endpoint.
+func (address EndpointAddress) IsIn() bool { return address.Direction() == endpointIn }
+
+// IsOut reports whether this is a host-to-device endpoint.
+func (address EndpointAddress) IsOut() bool { return address.Direction() == endpointOut }
+
+// Direction returns the endpoint direction encoded in the address byte.
+func (address EndpointAddress) Direction() EndpointDirection {
 	// Bit 7 of the endpointAddress determines the direction
 	const directionMask = 0x80
 	const directionBit = 7
 	return EndpointDirection(address&directionMask) >> directionBit
 }
 
-func (address endpointAddress) endpointNumber() byte {
+// Number returns the endpoint number encoded in bits 0..3.
+func (address EndpointAddress) Number() byte {
 	// Bits 0..3 determine the endpoint number
 	const endpointNumberMask = 0x0F
 	return byte(address & endpointNumberMask)
 }
+
+func (address EndpointAddress) direction() EndpointDirection { return address.Direction() }
+
+func (address EndpointAddress) endpointNumber() byte { return address.Number() }
 
 func (attributes endpointAttributes) transferType() TransferType {
 	// Bits 0..1 of the bmAttributes determines the transfer type

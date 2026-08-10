@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -10,14 +10,44 @@ package libusb
 import "C"
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"unsafe"
 )
 
 // Device represents a USB device including the opaque libusb_device struct.
 type Device struct {
+	ctx                 *Context
 	libusbDevice        *C.libusb_device
 	ActiveConfiguration *ConfigDescriptor
+}
+
+// DeviceIdentity is a stable device snapshot suitable for hotplug and export tracking.
+type DeviceIdentity struct {
+	VendorID      uint16
+	ProductID     uint16
+	BusNumber     int
+	DeviceAddress int
+	PortNumbers   []int
+	PortNumber    int
+	Speed         SpeedType
+}
+
+// BusID formats the identity into the standard USB/IP busid form.
+func (id DeviceIdentity) BusID() string {
+	if id.BusNumber == 0 {
+		return ""
+	}
+	if len(id.PortNumbers) == 0 {
+		return fmt.Sprintf("%d-0", id.BusNumber)
+	}
+	parts := make([]string, 0, len(id.PortNumbers))
+	for _, port := range id.PortNumbers {
+		parts = append(parts, fmt.Sprint(port))
+	}
+	return fmt.Sprintf("%d-%s", id.BusNumber, strings.Join(parts, "."))
 }
 
 // deviceFinalizer is called by the garbage collector to clean up
@@ -30,12 +60,22 @@ func deviceFinalizer(dev *Device) {
 }
 
 // newDevice creates a new Device with proper finalizer setup.
-func newDevice(libusbDevice *C.libusb_device) *Device {
+func newDevice(ctx *Context, libusbDevice *C.libusb_device) *Device {
 	dev := &Device{
+		ctx:          ctx,
 		libusbDevice: libusbDevice,
 	}
 	runtime.SetFinalizer(dev, deviceFinalizer)
 	return dev
+}
+
+// Clone returns an independently owned wrapper for the same device.
+func (dev *Device) Clone() *Device {
+	if dev == nil || dev.libusbDevice == nil {
+		return nil
+	}
+	C.libusb_ref_device(dev.libusbDevice)
+	return newDevice(dev.ctx, dev.libusbDevice)
 }
 
 // Close decrements the reference count of the device. If the decrement
@@ -107,7 +147,7 @@ func (dev *Device) PortNumber() (int, error) {
 // instead. It simply returns the wMaxPacketSize value without considering its
 // contents. If you're dealing with isochronous transfers, you probably want
 // libusb_get_max_iso_packet_size() instead." (Source: libusb docs)
-func (dev *Device) MaxPacketSize(ep endpointAddress) (int, error) {
+func (dev *Device) MaxPacketSize(ep EndpointAddress) (int, error) {
 	if dev == nil || dev.libusbDevice == nil {
 		return 0, ErrorCode(errorInvalidParam)
 	}
@@ -159,8 +199,35 @@ func (dev *Device) Open() (*DeviceHandle, error) {
 	if err != 0 {
 		return nil, ErrorCode(err)
 	}
-	deviceHandle := newDeviceHandle(handle)
+	deviceHandle := newDeviceHandle(dev.ctx, handle)
 	return deviceHandle, nil
+}
+
+// Identity returns the best-effort stable identity snapshot for the device.
+func (dev *Device) Identity() (*DeviceIdentity, error) {
+	if dev == nil || dev.libusbDevice == nil {
+		return nil, ErrorCode(errorInvalidParam)
+	}
+	return deviceIdentityFromLibusbDevice(dev.libusbDevice)
+}
+
+// SysfsAttribute reads an attribute for this device from Linux sysfs.
+func (dev *Device) SysfsAttribute(name string) (string, error) {
+	if dev == nil || dev.libusbDevice == nil {
+		return "", ErrorCode(errorInvalidParam)
+	}
+	if runtime.GOOS != "linux" {
+		return "", fmt.Errorf("sysfs attribute is unsupported on %s", runtime.GOOS)
+	}
+	identity, err := dev.Identity()
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(filepath.Join("/sys/bus/usb/devices", identity.BusID(), name))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 // DeviceDescriptor implements the libusb_get_device_descriptor function to
@@ -252,7 +319,7 @@ func parseConfigDescriptor(
 					epDescs = append(epDescs, &EndpointDescriptor{
 						Length:          int(lep.bLength),
 						DescriptorType:  descriptorType(lep.bDescriptorType),
-						EndpointAddress: endpointAddress(lep.bEndpointAddress),
+						EndpointAddress: EndpointAddress(lep.bEndpointAddress),
 						Attributes:      endpointAttributes(lep.bmAttributes),
 						MaxPacketSize:   uint16(lep.wMaxPacketSize),
 						Interval:        uint8(lep.bInterval),
@@ -303,6 +370,68 @@ func (dev *Device) ConfigDescriptor(configIndex int) (*ConfigDescriptor, error) 
 	return parseConfigDescriptor(cConfig), nil
 }
 
+// SerialNumber reads the device serial number through an explicit device open.
+func (dev *Device) SerialNumber() (string, error) {
+	if dev == nil || dev.libusbDevice == nil {
+		return "", ErrorCode(errorInvalidParam)
+	}
+	desc, err := dev.DeviceDescriptor()
+	if err != nil {
+		return "", err
+	}
+	if desc.SerialNumberIndex == 0 {
+		return "", fmt.Errorf("device does not advertise a serial number")
+	}
+	handle, err := dev.Open()
+	if err != nil {
+		return "", err
+	}
+	defer handle.Close()
+	return handle.StringDescriptorASCII(desc.SerialNumberIndex)
+}
+
+func devicePortNumbers(libusbDevice *C.libusb_device) ([]int, error) {
+	const maxPortDepth = 16
+	buffer := make([]C.uint8_t, maxPortDepth)
+	count := C.libusb_get_port_numbers(libusbDevice, &buffer[0], C.int(len(buffer)))
+	if count < 0 {
+		return nil, ErrorCode(count)
+	}
+	ports := make([]int, int(count))
+	for i := range ports {
+		ports[i] = int(buffer[i])
+	}
+	return ports, nil
+}
+
+func deviceIdentityFromLibusbDevice(libusbDevice *C.libusb_device) (*DeviceIdentity, error) {
+	if libusbDevice == nil {
+		return nil, ErrorCode(errorInvalidParam)
+	}
+	var desc C.struct_libusb_device_descriptor
+	if err := C.libusb_get_device_descriptor(libusbDevice, &desc); err != 0 {
+		return nil, ErrorCode(err)
+	}
+	ports, err := devicePortNumbers(libusbDevice)
+	if err != nil {
+		ports = nil
+	}
+	port, err := C.libusb_get_port_number(libusbDevice)
+	if err != nil {
+		port = 0
+	}
+	speed, err := C.libusb_get_device_speed(libusbDevice)
+	if err != nil {
+		speed = C.LIBUSB_SPEED_UNKNOWN
+	}
+	return &DeviceIdentity{
+		VendorID: uint16(desc.idVendor), ProductID: uint16(desc.idProduct),
+		BusNumber:     int(C.libusb_get_bus_number(libusbDevice)),
+		DeviceAddress: int(C.libusb_get_device_address(libusbDevice)),
+		PortNumbers:   ports, PortNumber: int(port), Speed: SpeedType(speed),
+	}, nil
+}
+
 // ConfigDescriptorByValue gets "a USB configuration descriptor with a
 // specific bConfigurationValue. This is a non-blocking function which does not
 // involve any requests being sent to the device. (Source: libusb docs)
@@ -335,7 +464,7 @@ func (dev *Device) ConfigDescriptorByValue(configValue int) (*ConfigDescriptor, 
 //
 //	import (
 //		"fmt"
-//		"github.com/gotmc/libusb/v2"
+//		"github.com/Tryanks/libusb"
 //	)
 //
 //	func main() {

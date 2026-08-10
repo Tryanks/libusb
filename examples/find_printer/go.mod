@@ -1,8 +1,7 @@
-module github.com/gotmc/libusb/examples/find_printer
+module github.com/Tryanks/libusb/examples/find_printer
 
 go 1.21
 
-require github.com/gotmc/libusb/v2 v2.0.0
+require github.com/Tryanks/libusb v0.0.0
 
-replace github.com/gotmc/libusb/v2 => ../..
-
+replace github.com/Tryanks/libusb => ../..

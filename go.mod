@@ -1,3 +1,3 @@
-module github.com/gotmc/libusb/v2
+module github.com/Tryanks/libusb
 
 go 1.21

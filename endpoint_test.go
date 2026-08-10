@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -11,7 +11,7 @@ import (
 
 func TestEndpointAddressDirection(t *testing.T) {
 	testCases := []struct {
-		address  endpointAddress
+		address  EndpointAddress
 		expected EndpointDirection
 	}{
 		{0x81, endpointIn},  // IN endpoint (bit 7 set)
@@ -23,9 +23,9 @@ func TestEndpointAddressDirection(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result := tc.address.direction()
+		result := tc.address.Direction()
 		if result != tc.expected {
-			t.Errorf("endpointAddress(0x%02x).direction() = %d, want %d",
+			t.Errorf("EndpointAddress(0x%02x).Direction() = %d, want %d",
 				tc.address, result, tc.expected)
 		}
 	}
@@ -33,7 +33,7 @@ func TestEndpointAddressDirection(t *testing.T) {
 
 func TestEndpointAddressNumber(t *testing.T) {
 	testCases := []struct {
-		address  endpointAddress
+		address  EndpointAddress
 		expected byte
 	}{
 		{0x00, 0},  // Endpoint 0
@@ -46,11 +46,24 @@ func TestEndpointAddressNumber(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result := tc.address.endpointNumber()
+		result := tc.address.Number()
 		if result != tc.expected {
-			t.Errorf("endpointAddress(0x%02x).endpointNumber() = %d, want %d",
+			t.Errorf("EndpointAddress(0x%02x).Number() = %d, want %d",
 				tc.address, result, tc.expected)
 		}
+	}
+}
+
+func TestEndpointAddressByteAndDirectionHelpers(t *testing.T) {
+	address := EndpointAddress(0x81)
+	if address.Byte() != 0x81 {
+		t.Fatalf("Byte() = 0x%02x, want 0x81", address.Byte())
+	}
+	if !address.IsIn() {
+		t.Fatal("IsIn() = false, want true")
+	}
+	if address.IsOut() {
+		t.Fatal("IsOut() = true, want false")
 	}
 }
 
@@ -105,7 +118,7 @@ func TestEndpointDescriptorEdgeCases(t *testing.T) {
 	// Test with various endpoint configurations
 	testCases := []struct {
 		name         string
-		address      endpointAddress
+		address      EndpointAddress
 		attributes   endpointAttributes
 		expectedDir  EndpointDirection
 		expectedNum  byte

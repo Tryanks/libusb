@@ -22,7 +22,7 @@ Vagrant.configure(VAGRANTFILE_API_VER) do |config|
     tar -C /usr/local -xzf /tmp/go1.8.1.linux-amd64.tar.gz
     rm /tmp/go1.8.1.linux-amd64.tar.gz
     su vagrant -l -c '/usr/local/go/bin/go get -u github.com/golang/lint/golint'
-    su vagrant -l -c '/usr/local/go/bin/go get github.com/gotmc/libusb'
+    su vagrant -l -c '/usr/local/go/bin/go get github.com/Tryanks/libusb'
     echo '### Show version of libusb installed'
     su vagrant -l -c 'pkg-config --modversion libusb-1.0'
   SHELL

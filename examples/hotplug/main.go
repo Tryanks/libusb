@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/gotmc/libusb/v2"
+	"github.com/Tryanks/libusb"
 )
 
 var ctx *libusb.Context
@@ -35,6 +35,6 @@ func main() {
 	time.Sleep(time.Second * 10)
 }
 
-func cb(vID, pID uint16, eventType libusb.HotPlugEventType) {
-	fmt.Printf("VendorID: %04x, ProductID: %04x, eventType: %d\r\n", vID, pID, eventType)
+func cb(event libusb.HotPlugEvent) {
+	fmt.Printf("VendorID: %04x, ProductID: %04x, eventType: %d\r\n", event.VendorID, event.ProductID, event.Event)
 }

@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -24,6 +24,7 @@ import "C"
 
 import (
 	"fmt"
+	"sync"
 	"unsafe"
 )
 
@@ -55,8 +56,11 @@ func (level LogLevel) String() string {
 
 // Context represents a libusb session/context.
 type Context struct {
-	libusbContext *C.libusb_context
-	LogLevel      LogLevel
+	mu             sync.Mutex
+	libusbContext  *C.libusb_context
+	eventLoop      *contextEventLoop
+	hotplugStorage *HotplugCallbackStorage
+	LogLevel       LogLevel
 }
 
 // NewContext intializes a new libusb session/context by creating a new
@@ -70,11 +74,27 @@ func NewContext() (*Context, error) {
 		return nil, fmt.Errorf(
 			"failed to initialize new libusb context; received error %d", errnum)
 	}
+	newContext.eventLoop = newContextEventLoop(newContext)
+	newContext.hotplugStorage = &HotplugCallbackStorage{
+		callbackMap: make(map[uint32]hotplugCallback),
+	}
+	registerContext(newContext)
 	return newContext, nil
 }
 
 // Close deinitializes the libusb session/context.
 func (ctx *Context) Close() error {
+	if ctx == nil {
+		return nil
+	}
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	if ctx.libusbContext == nil {
+		return nil
+	}
+	_ = ctx.HotplugDeregisterAllCallbacks()
+	ctx.eventLoop.stopLoop()
+	unregisterContext(ctx)
 	C.libusb_exit(ctx.libusbContext)
 	ctx.libusbContext = nil
 	return nil
@@ -82,12 +102,18 @@ func (ctx *Context) Close() error {
 
 // SetDebug sets the log message verbosity.
 func (ctx *Context) SetDebug(level LogLevel) {
+	if ctx == nil || ctx.libusbContext == nil {
+		return
+	}
 	C.set_debug(ctx.libusbContext, C.int(level))
 	ctx.LogLevel = level
 }
 
 // DeviceList returns an array of devices for the context.
 func (ctx *Context) DeviceList() ([]*Device, error) {
+	if ctx == nil || ctx.libusbContext == nil {
+		return nil, ErrorCode(errorInvalidParam)
+	}
 	var devices []*Device
 	var list **C.libusb_device
 	const unrefDevices = 1
@@ -107,7 +133,7 @@ func (ctx *Context) DeviceList() ([]*Device, error) {
 	for _, thisLibusbDevice := range libusbDevices {
 		// Increment reference count to keep device valid after list is freed
 		C.libusb_ref_device(thisLibusbDevice)
-		thisDevice := newDevice(thisLibusbDevice)
+		thisDevice := newDevice(ctx, thisLibusbDevice)
 		devices = append(devices, thisDevice)
 	}
 	return devices, nil
@@ -119,6 +145,9 @@ func (ctx *Context) OpenDeviceWithVendorProduct(
 	vendorID uint16,
 	productID uint16,
 ) (*Device, *DeviceHandle, error) {
+	if ctx == nil || ctx.libusbContext == nil {
+		return nil, nil, ErrorCode(errorInvalidParam)
+	}
 	libusbDeviceHandle := C.libusb_open_device_with_vid_pid(
 		ctx.libusbContext, C.uint16_t(vendorID), C.uint16_t(productID))
 	if libusbDeviceHandle == nil {
@@ -127,9 +156,9 @@ func (ctx *Context) OpenDeviceWithVendorProduct(
 			productID,
 		)
 	}
-	deviceHandle := newDeviceHandle(libusbDeviceHandle)
+	deviceHandle := newDeviceHandle(ctx, libusbDeviceHandle)
 	libusbDevice := C.libusb_get_device(libusbDeviceHandle)
-	device := newDevice(libusbDevice)
+	device := newDevice(ctx, libusbDevice)
 	// Need to increment reference count since we're creating a new Device object
 	C.libusb_ref_device(libusbDevice)
 	return device, deviceHandle, nil

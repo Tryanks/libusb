@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -33,24 +33,6 @@ func TestVidPidToUint32(t *testing.T) {
 	}
 }
 
-func TestGetHotplugStorageNilContext(t *testing.T) {
-	storage := getHotplugStorage(nil)
-	if storage != nil {
-		t.Error("getHotplugStorage(nil) should return nil")
-	}
-}
-
-func TestHotplugRegistryOperations(t *testing.T) {
-	// Verify empty registry returns nil
-	storage := getHotplugStorage(nil)
-	if storage != nil {
-		t.Error("expected nil for unregistered context")
-	}
-
-	// removeHotplugStorage on non-existent key should not panic
-	removeHotplugStorage(nil)
-}
-
 func TestHotPlugEventTypeConstants(t *testing.T) {
 	if HotplugUndefined != 0 {
 		t.Errorf("HotplugUndefined = %d, want 0", HotplugUndefined)
@@ -68,6 +50,11 @@ func TestHotPlugEventStruct(t *testing.T) {
 		VendorID:  0x1234,
 		ProductID: 0x5678,
 		Event:     HotplugArrived,
+		Identity: DeviceIdentity{
+			BusNumber:     1,
+			DeviceAddress: 2,
+			PortNumbers:   []int{1, 4},
+		},
 	}
 	if event.VendorID != 0x1234 {
 		t.Errorf("VendorID = 0x%04X, want 0x1234", event.VendorID)
@@ -78,6 +65,9 @@ func TestHotPlugEventStruct(t *testing.T) {
 	if event.Event != HotplugArrived {
 		t.Errorf("Event = %d, want HotplugArrived", event.Event)
 	}
+	if event.Identity.BusNumber != 1 {
+		t.Errorf("Identity.BusNumber = %d, want 1", event.Identity.BusNumber)
+	}
 }
 
 func TestHotplugCallbackStorageZeroValue(t *testing.T) {
@@ -85,7 +75,10 @@ func TestHotplugCallbackStorageZeroValue(t *testing.T) {
 	if storage.callbackMap != nil {
 		t.Error("zero-value HotplugCallbackStorage should have nil callbackMap")
 	}
-	if storage.done != nil {
-		t.Error("zero-value HotplugCallbackStorage should have nil done channel")
+}
+
+func TestContextRegistryRoundTrip(t *testing.T) {
+	if got := contextByLibusbContext(nil); got != nil {
+		t.Fatalf("contextByLibusbContext(nil) = %#v, want nil", got)
 	}
 }

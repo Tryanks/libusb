@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2025 The libusb developers. All rights reserved.
-// Project site: https://github.com/gotmc/libusb
+// Project site: https://github.com/Tryanks/libusb
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
@@ -12,7 +12,7 @@ import "unsafe"
 
 // BulkTransfer implements libusb_bulk_transfer to perform a USB bulk transfer.
 func (dh *DeviceHandle) BulkTransfer(
-	endpoint endpointAddress,
+	endpoint EndpointAddress,
 	data []byte,
 	length int,
 	timeout int,
@@ -41,7 +41,7 @@ func (dh *DeviceHandle) BulkTransfer(
 
 // BulkTransferOut is a helper method that performs a USB bulk output transfer.
 func (dh *DeviceHandle) BulkTransferOut(
-	endpoint endpointAddress,
+	endpoint EndpointAddress,
 	data []byte,
 	timeout int,
 ) (int, error) {
@@ -55,7 +55,7 @@ func (dh *DeviceHandle) BulkTransferOut(
 
 // BulkTransferIn is a helper method that performs a USB bulk input transfer.
 func (dh *DeviceHandle) BulkTransferIn(
-	endpoint endpointAddress,
+	endpoint EndpointAddress,
 	maxReceiveBytes int,
 	timeout int,
 ) ([]byte, int, error) {
@@ -182,7 +182,7 @@ func (dh *DeviceHandle) ControlIn(
 
 // InterruptTransfer performs a USB interrupt transfer.
 func (dh *DeviceHandle) InterruptTransfer(
-	endpoint endpointAddress,
+	endpoint EndpointAddress,
 	data []byte,
 	length int,
 	timeout int,
